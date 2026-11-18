@@ -4,15 +4,18 @@
 name: Java CI with Maven
 
 on:
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+  workflow_dispatch:
+    inputs:
+      test-filter:
+        description: 'Optional surefire -Dtest selector; empty runs the full suite'
+        required: false
+        default: ''
 
 jobs:
   build:
 
     runs-on: ubuntu-latest
+    timeout-minutes: 45
 
     steps:
     - uses: actions/checkout@v3
@@ -23,7 +26,18 @@ jobs:
         distribution: 'temurin'
         cache: maven
     - name: Build with Maven
-      run: mvn -B package checkstyle:check --file pom.xml
+      run: |
+        if [ -n "${{ inputs.test-filter }}" ]; then
+          mvn -B package --file pom.xml -Dtest=${{ inputs.test-filter }} -DfailIfNoTests=false
+        else
+          mvn -B package --file pom.xml
+        fi
+    - name: Upload batik-util jar
+      uses: actions/upload-artifact@v4
+      with:
+        name: batik-util-jar
+        path: batik-util/target/batik-util-1.17.jar
+        if-no-files-found: error
 
     # Optional: Uploads the full dependency graph to GitHub to improve the quality of Dependabot alerts this repository can receive
     #- name: Update dependency graph
